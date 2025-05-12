@@ -4,37 +4,44 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Gadget;
+use App\Services\PriceUpdater;
 use Illuminate\Support\Facades\Log;
 
 class RevealGadget extends Command
 {
     protected $signature = 'gadgets:reveal-one';
-    protected $description = 'Makes one hidden gadget visible';
+    protected $description = 'Makes one hidden gadget visible and updates prices';
 
     public function handle(): int
     {
-        // Wait for a random time (0–55 minutes) to simulate natural publishing
+		Log::info('📆 RevealGadget: started');
+        // Random delay to simulate natural behavior
+		$hour = now()->hour;
+		if ($hour < 9 || $hour > 20) {
+			Log::info("🌙 Skipping: current hour $hour is outside allowed range");
+			return Command::SUCCESS;
+		}
         sleep(random_int(0, 55) * 60);
 
         $today = now()->toDateString();
 
-        // Allow only one publication per day
-        $alreadyPublishedToday = Gadget::whereDate('published_at', $today)
+        // Skip if already published this week
+        $publishedThisWeek = Gadget::whereBetween('published_at', [now()->startOfWeek(), now()])
             ->where('is_visible', true)
             ->exists();
 
-        if ($alreadyPublishedToday) {
-            Log::info('🕐 Already published a gadget today');
+        if ($publishedThisWeek) {
+            Log::info('🕐 Already published this week');
             return Command::SUCCESS;
         }
 
-        // ~20% chance to publish today
-        if (random_int(1, 100) > 20) {
-            Log::info('❌ Skipping publication (random chance)');
+        // ~30% chance to publish this week
+        if (random_int(1, 100) > 30) {
+            Log::info('❌ Skipping (random chance)');
             return Command::SUCCESS;
         }
 
-        // Find the first hidden gadget
+        // Find first hidden gadget
         $gadget = Gadget::where('is_visible', false)
             ->orderBy('created_at')
             ->first();
@@ -51,6 +58,15 @@ class RevealGadget extends Command
         ]);
 
         Log::info("✅ Published: {$gadget->name}");
+
+        // Update prices after publishing
+        try {
+            app(PriceUpdater::class)->updatePrices();
+            Log::info("💰 Prices updated for {$gadget->name}");
+        } catch (\Throwable $e) {
+            Log::error("❗ Price update error: " . $e->getMessage());
+        }
+
         return Command::SUCCESS;
     }
 }

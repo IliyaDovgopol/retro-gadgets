@@ -10,7 +10,17 @@ class Gadget extends Model
     use HasFactory;
 
     // Mass-assignable fields
-    protected $fillable = ['name', 'slug', 'description', 'year', 'category_id', 'image_url'];
+    protected $fillable = [
+		'name',
+		'slug',
+		'description',
+		'year',
+		'category_id',
+		'image_url',
+		'is_visible',
+		'published_at',
+	];
+	
 
     /**
      * Category relationship (many-to-one)

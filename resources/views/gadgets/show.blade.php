@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
-@section('title', $gadget->name . ' – історія, огляд та де купити')
+@section('title', \Illuminate\Support\Str::limit($gadget->intro ?? ($gadget->name . ' повертається! Історія легендарного гаджета та де купити'), 60))
+
+@section('meta_description', \Illuminate\Support\Str::limit($gadget->meta_description ?? ($gadget->name . ' — легендарний ретро-гаджет! Огляд, історія та де купити вигідно.'), 160))
 
 @section('content')
 <article class="container" itemscope itemtype="https://schema.org/Product">
@@ -11,7 +13,7 @@
 
     {{-- Page header --}}
     <header class="text-center mb-4">
-        <h1 class="fw-bold fs-1">{{ $gadget->name }} – огляд, історія та ціни</h1>
+        <h1 class="fw-bold fs-1">{{ \Illuminate\Support\Str::words($gadget->intro ?? ($gadget->name . ' повертається! Історія легендарного гаджета та де купити'), 10) }}</h1>
         <p class="text-muted fs-5">Дата випуску: {{ $gadget->year }} | Категорія: {{ $gadget->category->name }}</p>
     </header>
 
@@ -35,8 +37,7 @@
 
     <div class="row mt-5">
         <div class="col-lg-8 text-body">
-            {{-- Intro text (optional) --}}
-            @if($gadget->intro)
+            @if($gadget->intro && strlen($gadget->intro) > 60)
                 <p class="lead fs-4 lh-lg mb-4">{{ $gadget->intro }}</p>
             @endif
 
@@ -48,7 +49,7 @@
                             $ebayPrice = $gadget->prices()->where('source', 'eBay')->orderBy('price')->first();
                             $imageUrl = $ebayPrice->image_url ?? $gadget->image_url ?? '/images/default-placeholder.png';
                         @endphp
-                        <img src="{{ $imageUrl }}" class="img-fluid product-image" alt="{{ $gadget->name }}" itemprop="image">
+                        <img src="{{ $imageUrl }}" class="img-fluid product-image" alt="{{ $gadget->name }}" itemprop="image" loading="lazy">
                     </div>
                 </div>
 
@@ -57,11 +58,11 @@
                     <p class="fs-5 lh-lg mb-4" itemprop="description">{{ $gadget->description }}</p>
 
                     <h3 class="fs-4 mb-3">Основні особливості:</h3>
-                    <ul class="fs-5 lh-lg mb-4">
-                        <li class="mb-2"><strong>Рік випуску:</strong> {{ $gadget->year }}</li>
-                        <li class="mb-2"><strong>Категорія:</strong> {{ $gadget->category->name }}</li>
-                        <li class="mb-2"><strong>Історична цінність:</strong> {{ $gadget->legacy }}</li>
-                        <li class="mb-2"><strong>Унікальні характеристики:</strong> {{ $gadget->unique_features }}</li>
+                    <ul class="fs-5 lh-lg mb-4 list-unstyled">
+                        <li><strong>Рік випуску:</strong> {{ $gadget->year }}</li>
+                        <li><strong>Категорія:</strong> {{ $gadget->category->name }}</li>
+                        <li><strong>Історична цінність:</strong> {{ $gadget->legacy }}</li>
+                        <li><strong>Унікальні характеристики:</strong> {{ $gadget->unique_features }}</li>
                     </ul>
                 </div>
             </div>
@@ -76,10 +77,10 @@
 
                 <h3 class="fs-4 mb-3">Цікаві факти</h3>
                 <div class="fact-box fs-5 lh-lg mb-4">
-                    <ul class="mb-0">
+                    <ul class="mb-0 list-unstyled">
                         @foreach(explode("\n", $gadget->fun_facts) as $fact)
                             @if(trim($fact))
-                                <li>{{ $fact }}</li>
+                                <li class="mb-2">{{ $fact }}</li>
                             @endif
                         @endforeach
                     </ul>
@@ -89,69 +90,93 @@
                 <p class="fs-5 lh-lg">{{ $gadget->legacy }}</p>
             </section>
 
-            {{-- Price chart (if available) --}}
-            <section class="mb-5">
-                <h2 class="fs-3 mb-3">Історія цін</h2>
-                @if($gadget->price_history)
+            {{-- Price chart --}}
+            @if($gadget->price_history)
+                <section class="mb-5">
+                    <h2 class="fs-3 mb-3">Історія цін</h2>
                     <div id="price-chart"></div>
                     <script>
                         const priceData = {!! json_encode($gadget->price_history) !!};
                     </script>
-                @else
-                    <p class="fs-6 lh-lg">Історія цін відсутня.</p>
-                @endif
-            </section>
+                </section>
+            @endif
+
+            {{-- Related Gadgets --}}
+            @if(!empty($relatedGadgets))
+                <section class="mt-5">
+                    <h2 class="fs-3 mb-4">Схожі товари</h2>
+                    <div class="row">
+                        @foreach($relatedGadgets as $related)
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <img src="{{ $related->image_url ?? '/images/default-placeholder.png' }}" class="card-img-top img-fluid" alt="{{ $related->name }}" loading="lazy" style="height: 200px; object-fit: contain;">
+                                    <div class="card-body">
+                                        <h5 class="card-title fs-6">{{ $related->name }}</h5>
+                                        <a href="{{ route('gadgets.show', $related) }}" class="btn btn-primary btn-sm mt-2">Дивитись</a>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
         </div>
 
-        {{-- Right column with purchase blocks --}}
+        {{-- Right column --}}
         <aside class="col-lg-4">
             <section>
                 <h2 class="fs-4 mb-4">Де купити {{ $gadget->name }}?</h2>
 
-                {{-- eBay section --}}
-                <div class="mb-4">
-                    <img src="{{ $ebayImages[1] ?? '/images/default-placeholder.png' }}" alt="eBay товар" class="img-fluid rounded mb-2">
-                    <h5 class="fs-6 fw-bold">eBay (USD)</h5>
-                    <ul class="list-unstyled small">
-                        @foreach($ebayPrices as $price)
-                            <li class="mb-1">
-                                <a href="{{ $price->link }}" target="_blank">
-                                    {{ $price->product_name }} — ${{ number_format($price->price, 2) }}
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
+                {{-- eBay --}}
+                @if(!empty($ebayPrices))
+                    <div class="card shadow-sm mb-4">
+                        <img src="{{ $ebayImages[1] ?? '/images/default-placeholder.jpg' }}" alt="eBay товар" class="card-img-top" loading="lazy" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="fs-6 fw-bold">eBay (USD)</h5>
+                            <ul class="list-unstyled small">
+                                @foreach($ebayPrices as $price)
+                                    <li class="mb-1">
+                                        <a href="{{ $price->link }}" target="_blank">{{ $price->product_name }} — ${{ number_format($price->price, 2) }}</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                @endif
 
-                {{-- Prom.ua section --}}
-                <div class="mb-4">
-                    <img src="{{ $ebayImages[2] ?? '/images/default-placeholder.png' }}" alt="Prom фото" class="img-fluid rounded mb-2">
-                    <h5 class="fs-6 fw-bold">Prom.ua (грн)</h5>
-                    <ul class="list-unstyled small">
-                        @foreach($promItems as $price)
-                            <li class="mb-1">
-                                <a href="{{ $price->link }}" target="_blank">
-                                    {{ $price->product_name }} — {{ number_format($price->price, 2) }} грн
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
+                {{-- Prom.ua --}}
+                @if(!empty($promItems))
+                    <div class="card shadow-sm mb-4">
+                        <img src="{{ $ebayImages[2] ?? '/images/default-placeholder.jpg' }}" alt="Prom фото" class="card-img-top" loading="lazy" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="fs-6 fw-bold">Prom.ua (грн)</h5>
+                            <ul class="list-unstyled small">
+                                @foreach($promItems as $price)
+                                    <li class="mb-1">
+                                        <a href="{{ $price->link }}" target="_blank">{{ $price->product_name }} — {{ number_format($price->price, 2) }} грн</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                @endif
 
-                {{-- OLX section --}}
-                <div class="mb-4">
-                    <img src="{{ $ebayImages[3] ?? '/images/default-placeholder.png' }}" alt="OLX фото" class="img-fluid rounded mb-2">
-                    <h5 class="fs-6 fw-bold">OLX (грн)</h5>
-                    <ul class="list-unstyled small">
-                        @foreach($olxItems as $price)
-                            <li class="mb-1">
-                                <a href="{{ $price->link }}" target="_blank">
-                                    {{ $price->product_name }} — {{ number_format($price->price, 2) }} грн
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
+                {{-- OLX --}}
+                @if(!empty($olxItems))
+                    <div class="card shadow-sm mb-4">
+                        <img src="{{ $ebayImages[3] ?? '/images/default-placeholder.jpg' }}" alt="OLX фото" class="card-img-top" loading="lazy" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="fs-6 fw-bold">OLX (грн)</h5>
+                            <ul class="list-unstyled small">
+                                @foreach($olxItems as $price)
+                                    <li class="mb-1">
+                                        <a href="{{ $price->link }}" target="_blank">{{ $price->product_name }} — {{ number_format($price->price, 2) }} грн</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                @endif
             </section>
         </aside>
     </div>
@@ -166,7 +191,6 @@
         $lastUpdatedPrice = $gadget->prices()->orderBy('updated_at', 'desc')->first();
         $lastUpdateDate = $lastUpdatedPrice ? $lastUpdatedPrice->updated_at->format('d.m.Y') : 'Невідомо';
     @endphp
-
     <p class="text-muted text-center mt-3 fs-7">Останнє оновлення товарів: {{ $lastUpdateDate }}</p>
 </article>
 
@@ -181,19 +205,27 @@
         overflow: hidden;
         padding: 20px;
     }
-
     .product-image {
         width: 100%;
         height: auto;
         max-height: 100%;
         object-fit: contain;
     }
-
-    .fact-box {
-        background: #f8f9fa;
-        padding: 15px;
-        border-left: 5px solid #007bff;
-        margin: 20px 0;
+    .fact-box ul {
+        padding-left: 0;
+    }
+    .fact-box li {
+        list-style: none;
+        position: relative;
+        padding-left: 20px;
+    }
+    .fact-box li::before {
+        content: "•";
+        color: #007bff;
+        position: absolute;
+        left: 0;
+        font-size: 20px;
+        line-height: 1;
     }
 </style>
 @endsection

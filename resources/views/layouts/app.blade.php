@@ -9,10 +9,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+	<link rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
+	@if(View::hasSection('meta_description'))
+    <meta name="description" content="@yield('meta_description')">
+	@else
+		<meta name="description" content="Каталог ретро-гаджетів — телефони, ігрові приставки, культові технології 80–90-х років.">
+	@endif
 
-    {{-- Additional styles from child views --}}
-    @stack('styles')
+{{-- Additional styles from child views --}}
+@stack('styles')
 </head>
 <body>
 	<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
@@ -61,7 +66,7 @@
 				</ul>
 
 				{{-- Search form --}}
-				<form class="d-flex" action="{{ route('gadgets.index') }}" method="GET">
+				<form class="d-flex" action="{{ secure_url('gadgets') }}" method="GET">
 					{{-- Preserve existing filters --}}
 					@foreach(request()->except('q') as $key => $val)
 						<input type="hidden" name="{{ $key }}" value="{{ $val }}">

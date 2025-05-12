@@ -11,11 +11,13 @@ class Kernel extends ConsoleKernel
      * Define the application's command schedule.
      */
     protected function schedule(Schedule $schedule): void
-    {
-        $schedule->call(function () {
+	{
+		$schedule->call(function () {
 			app(\App\Services\PriceUpdater::class)->updatePrices();
-		})->daily();
-    }
+		})->hourly();
+
+		$schedule->command('gadgets:reveal-one')->hourly();
+	}
 
     /**
      * Register the commands for the application.
